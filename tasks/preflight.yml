@@ -1,0 +1,88 @@
+---
+- name: "[preflight] - Set selinux to permissive"
+  selinux:
+    policy: targeted
+    state: permissive
+
+- name: "[preflight] - Disable swap"
+  shell: |
+    swapoff -a
+  changed_when: false
+
+- name: "[preflight] - Set the hostname"
+  hostname:
+    name: "{{ inventory_hostname }}"
+
+- name: "[preflight] - rhsm - Register to the CDN"
+  redhat_subscription:
+    state: present
+    username: "{{ rhsm_username }}"
+    password: "{{ rhsm_password }}"
+    auto_attach: true
+
+- name: "[preflight] - Install iproute-tc package"
+  package:
+    name: iproute-tc
+    state: present
+
+- name: "[preflight] - Load kernel modules"
+  modprobe:
+    name: "{{ item }}"
+    state: present
+  loop:
+    - overlay
+    - br_netfilter
+
+- name: "[preflight]- Load sysctl params"
+  sysctl:
+    name: "{{ item }}"
+    state: present
+    reload: yes
+    sysctl_set: yes
+    value: '1'
+  loop:
+    - net.ipv4.ip_forward
+    - net.bridge.bridge-nf-call-iptables
+    - net.bridge.bridge-nf-call-ip6tables
+
+- name: "[preflight] - Install firewalld package"
+  package:
+    name: "{{ item }}"
+    state: present
+  loop:
+    - firewalld
+
+- name: "[preflight] - Start and Enable firewalld service"
+  service:
+    name: "{{ item }}"
+    state: started
+    enabled: true
+  loop:
+    - firewalld
+
+- name: "[preflight] - Configure firewalld"
+  firewalld:
+    port: "{{ item }}"
+    permanent: yes
+    immediate: yes
+    state: enabled
+  loop:
+    - 10250-10252/tcp
+    - 30000-32767/tcp
+    - 6443/tcp
+    - 2379-2380/tcp
+    - 443/tcp
+    - 80/tcp
+
+- name: "[preflight] - Install python3-pip on controlplane"
+  package:
+    name: python3-pip
+    state: present
+  when: inventory_hostname in groups['controlplane']
+
+- name: "[preflight] - Install kubernetes pip module"
+  pip:
+    name: kubernetes
+    executable: pip3
+  when: inventory_hostname in groups['controlplane']
+

@@ -1,0 +1,22 @@
+---
+- name: "[k8s bootstrap] - controlplane - get join command"
+  command: 
+    cmd: kubeadm token create --print-join-command
+  register: join
+  when: inventory_hostname in groups['controlplane']
+
+- name: "[k8s bootstrap] - controlplane - Set join command fact"
+  set_fact:
+    join_command: "{{ join.stdout }}"
+  when: inventory_hostname in groups['controlplane']
+
+- name: "[k8s bootstrap] - cluster - Get controlplane hostname"
+  set_fact:
+    cp_name: "{{ hostvars[item]['inventory_hostname'] }}"
+  with_items: "{{ groups.controlplane }}"
+
+- name: "[k8s bootstrap] - nodes - Join nodes to cluster"
+  command:
+    cmd: "{{ hostvars[cp_name]['join_command'] }}"
+    creates: /etc/kubernetes/pki/ca.crt
+  when: inventory_hostname in groups['workers']

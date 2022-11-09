@@ -1,0 +1,26 @@
+- name: "[k8s deployment] - Preflight Configuration"
+  import_tasks: preflight.yml
+  tags: deploy
+
+- name: "[k8s deployment] - k8s nodes preflight configurations"
+  import_tasks: k8s-preflight.yml
+  tags: deploy
+
+- name: "[k8s deployment] - k8s controlplane initialization"
+  import_tasks: k8s-controlplane-bootstrap.yml
+  when: inventory_hostname in groups['controlplane']
+  tags: deploy
+
+- name: "[k8s deployment] - k8s controlplane initialization"
+  import_tasks: k8s-worker-bootsrap.yml
+  tags: deploy
+
+- name: "[k8s deployment] - Deploy metallb"
+  import_tasks: metallb-l2.yaml
+  when: deploy_metallb and inventory_hostname in groups['controlplane']
+  tags: metallb, deploy
+
+- name: "[k8s deployment] - Deploy nginx ingress"
+  import_tasks: nginx-ingress.yaml
+  when: deploy_nginx_ingress and inventory_hostname in groups['controlplane']
+  tags: ingress, deploy

@@ -1,0 +1,19 @@
+---
+- name: "[nginx-ingress] - install - Download Manifests"
+  get_url:
+    url: https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-v1.0.0/deploy/static/provider/cloud/deploy.yaml
+    dest: /tmp/ingress-deploy.yaml
+    mode: '0644'
+
+- name: "[nginx-ingress] - install - Apply the manifests"
+  kubernetes.core.k8s:
+    state: present
+    src: /tmp/ingress-deploy.yaml
+
+- name: "[nginx-ingress] - config - Remove validatingwebhookconfiguration resource"
+  kubernetes.core.k8s:
+    state: absent
+    api_version: admissionregistration.k8s.io/v1
+    kind: ValidatingWebhookConfiguration
+    name: ingress-nginx-admission
+    namespace: default

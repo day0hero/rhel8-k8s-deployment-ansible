@@ -1,0 +1,22 @@
+---
+- name: "[metallb deployment] - installation - Download manifests for the namespace and metallb resource"
+  get_url:
+    url: "{{ item }}"
+    dest: /tmp/
+    mode: '0644'
+  loop:
+    - https://raw.githubusercontent.com/metallb/metallb/v0.12.1/manifests/namespace.yaml
+    - https://raw.githubusercontent.com/metallb/metallb/v0.12.1/manifests/metallb.yaml
+
+- name: "[metallb deployment] - installation - apply manifests"
+  kubernetes.core.k8s:
+    state: present
+    src: "{{ item }}"
+  loop:
+    - /tmp/namespace.yaml
+    - /tmp/metallb.yaml
+
+- name: "[metallb deployment] - configuration - Create ConfigMap for L2 metallb instance"
+  kubernetes.core.k8s:
+    state: present
+    definition: "{{ lookup('template', 'l2-metaldef.yaml.j2') | from_yaml }}"

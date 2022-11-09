@@ -1,0 +1,52 @@
+---
+- name: "[k8s-preflight] - crio - Download repo files"
+  get_url: 
+    url: "https://download.opensuse.org/repositories/devel:kubic:libcontainers:stable/CentOS_8/devel:kubic:libcontainers:stable.repo"
+    dest: /etc/yum.repos.d/crio-kubic-stable.repo
+    mode: '0644'
+
+- name: "[k8s-preflight] - crio - Download the k8s specific repo version"
+  get_url:
+    url: "https://download.opensuse.org/repositories/devel:kubic:libcontainers:stable:cri-o:{{ k8s_version }}/CentOS_8/devel:kubic:libcontainers:stable:cri-o:{{ k8s_version }}.repo"
+    dest: "/etc/yum.repos.d/crio-kubic-{{ k8s_version }}-stable.repo"
+    mode: '0644'
+
+- name: "[k8s-preflight] - crio - Install runtime packages"
+  package:
+    name: "{{ item }}"
+    state: present
+  loop:
+    - cri-o
+    - cri-tools
+
+- name: "[k8s-preflight] - crio - Start and Enable crio runtime"
+  service:
+    name: crio
+    state: started
+    enabled: true
+
+- name: "[k8s-preflight] - Create yum repo for k8s"
+  yum_repository:
+    state: present
+    name: kubernetes
+    baseurl: https://packages.cloud.google.com/yum/repos/kubernetes-el7-x86_64
+    description: "kubernetes repo"
+    gpgcheck: yes
+    gpgkey: https://packages.cloud.google.com/yum/doc/yum-key.gpg https://packages.cloud.google.com/yum/doc/rpm-package-key.gpg
+    exclude: kubelet kubeadm kubectl
+
+- name: "[k8s-preflight] - Install kubernetes packages"
+  yum:
+    name: "{{ item }}"
+    state: present
+    disable_excludes: kubernetes
+  loop:
+    - kubeadm
+    - kubectl
+    - kubelet
+
+- name: "[k8s-preflight] - Start the kubelet service"
+  service:
+    name: kubelet
+    state: started
+    enabled: true

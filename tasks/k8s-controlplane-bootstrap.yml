@@ -1,0 +1,32 @@
+---
+- name: "[k8s-bootstrap] - Initialize cluster - controlplane nodes only"
+  command:
+    cmd: /usr/bin/kubeadm init --pod-network-cidr={{ k8s_pod_network_cidr }}
+  args:
+    creates: /etc/kubernetes/admin.conf
+
+- name: "[k8s-bootstrap] - create directory for kubeconfig"
+  file:
+    state: directory
+    path: "{{ ansible_user_dir }}/.kube"
+    owner: "{{ ansible_user_id }}"
+    group: "{{ ansible_user_id }}"
+    mode: '0755'
+  delegate_to: "{{ inventory_hostname }}"
+
+- name: "[k8s-bootstrap] - Copy kubeconfig to created directory"
+  copy:
+    remote_src: yes
+    src: /etc/kubernetes/admin.conf
+    dest: "{{ ansible_user_dir }}/.kube/config"
+    mode: '0640'
+
+- name: "[k8s-bootstrap] - Download calico manifests"
+  get_url:
+    url: "https://docs.projectcalico.org/manifests/calico.yaml"
+    dest: /tmp/calico.yaml
+
+- name: "[k8s-bootstrap] - Install calico SDN"
+  kubernetes.core.k8s:
+    state: present
+    src: /tmp/calico.yaml
