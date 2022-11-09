@@ -29,7 +29,7 @@
   yum_repository:
     state: present
     name: kubernetes
-    baseurl: https://packages.cloud.google.com/yum/repos/kubernetes-el7-x86_64
+    baseurl: "https://packages.cloud.google.com/yum/repos/kubernetes-el7-{{ ansible_architecture }}"
     description: "kubernetes repo"
     gpgcheck: yes
     gpgkey: https://packages.cloud.google.com/yum/doc/yum-key.gpg https://packages.cloud.google.com/yum/doc/rpm-package-key.gpg
@@ -44,6 +44,7 @@
     - kubeadm
     - kubectl
     - kubelet
+    - kubernetes-cni
 
 - name: "[k8s-preflight] - Start the kubelet service"
   service:
