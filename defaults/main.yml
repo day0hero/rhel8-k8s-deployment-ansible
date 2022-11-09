@@ -1,2 +1,12 @@
 rhsm_username: ## Red Hat CDN userName
 rhsm_password: ## Red Hat CDN password
+
+k8s_version: 1.25
+k8s_pod_cidr_network: 10.222.0.0/16
+deploy_nginx_ingress: true
+deploy_metallb: true
+metallb:
+  addressPool:
+    name: default
+    start: beginning of address pool for metallb"
+    end: "end of address pool for metallb"
