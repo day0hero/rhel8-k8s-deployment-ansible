@@ -1,46 +1,59 @@
 ---
 - name: "[preflight] - Set selinux to permissive"
-  selinux:
+  ansible.posix.selinux:
     policy: targeted
     state: permissive
 
 - name: "[preflight] - Disable swap"
-  shell: |
+  ansible.builtin.shell: |
     swapoff -a
   changed_when: false
 
-- name: "[preflight] - Disable swap for raspi"
-  shell: |
-    swapoff /dev/zram0; zramctl --reset /dev/zram0
-  when: {{ ansible_architecture }} == "aarch64"
+- name: "[preflight] - Check for swap device"
+  ansible.builtin.stat:
+    path: /dev/zram0
+  register: zram
+  when: ansible_architecture == "aarch64"
 
 - name: "[preflight] - Disable swap for raspi"
-  file:
+  ansible.builtin.shell: |
+    swapoff /dev/zram0; zramctl --reset /dev/zram0
+  when: zram.stat.exists
+
+- name: "[preflight] - Check for zram-generator.conf"
+  ansible.builtin.stat:
     path: /etc/systemd/zram-generator.conf
+  register: p
+  when: ansible_architecture == "aarch64"
+  
+- name: "[preflight] - Disable swap for raspi"
+  ansible.builtin.file:
+    path: /etc/systemd/zram-generator.conf
+    state: present
     owner: root
     group: root
     mode: 0644
-  when: {{ ansible_architecture }} == "aarch64"
+  when: p.stat.exists
 
 - name: "[preflight] - Set the hostname"
-  hostname:
+  ansible.builtin.hostname:
     name: "{{ inventory_hostname }}"
 
 - name: "[preflight] - rhsm - Register to the CDN"
-  redhat_subscription:
+  community.general.redhat_subscription:
     state: present
     username: "{{ rhsm_username }}"
     password: "{{ rhsm_password }}"
     auto_attach: true
-  when: {{ ansible_distribution }} == "RedHat"
+  when: ansible_distribution == "RedHat"
 
 - name: "[preflight] - Install iproute-tc package"
-  package:
+  ansible.builtin.package:
     name: iproute-tc
     state: present
 
 - name: "[preflight] - Load kernel modules"
-  modprobe:
+  community.general.modprobe:
     name: "{{ item }}"
     state: present
   loop:
@@ -48,7 +61,7 @@
     - br_netfilter
 
 - name: "[preflight]- Load sysctl params"
-  sysctl:
+  ansible.posix.sysctl:
     name: "{{ item }}"
     state: present
     reload: yes
@@ -60,14 +73,14 @@
     - net.bridge.bridge-nf-call-ip6tables
 
 - name: "[preflight] - Install firewalld package"
-  package:
+  ansible.builtin.package:
     name: "{{ item }}"
     state: present
   loop:
     - firewalld
 
 - name: "[preflight] - Start and Enable firewalld service"
-  service:
+  ansible.builtin.service:
     name: "{{ item }}"
     state: started
     enabled: true
@@ -75,7 +88,7 @@
     - firewalld
 
 - name: "[preflight] - Configure firewalld"
-  firewalld:
+  ansible.posix.firewalld:
     port: "{{ item }}"
     permanent: yes
     immediate: yes
@@ -89,13 +102,13 @@
     - 80/tcp
 
 - name: "[preflight] - Install python3-pip on controlplane"
-  package:
+  ansible.builtin.package:
     name: python3-pip
     state: present
   when: inventory_hostname in groups['controlplane']
 
 - name: "[preflight] - Install kubernetes pip module"
-  pip:
+  ansible.builtin.pip:
     name: kubernetes
     executable: pip3
   when: inventory_hostname in groups['controlplane']
