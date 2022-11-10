@@ -26,14 +26,14 @@
   register: p
   when: ansible_architecture == "aarch64"
   
-- name: "[preflight] - Disable swap for raspi"
+- name: "[preflight] - Touch file to disable swap for raspi"
   ansible.builtin.file:
     path: /etc/systemd/zram-generator.conf
-    state: present
+    state: touch
     owner: root
     group: root
     mode: 0644
-  when: p.stat.exists
+  when: not p.stat.exists
 
 - name: "[preflight] - Set the hostname"
   ansible.builtin.hostname:
